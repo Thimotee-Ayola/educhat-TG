@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card wide">
+  <h1>{{ other['username'] }}</h1>
+  <p class="subtitle">Messages chiffrés au repos.</p>
+
+  <div class="chat-window">
+    {% for m in messages %}
+      <div class="bubble {{ 'mine' if m.mine else 'theirs' }}">{{ m.text }}</div>
+    {% endfor %}
+  </div>
+
+  <form method="POST" class="chat-form">
+    <input type="text" name="message" placeholder="Écris ton message..." required autofocus>
+    <button type="submit">Envoyer</button>
+  </form>
+  <a class="link" href="{{ url_for('dashboard') }}">← Retour</a>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="shield-icon">🔐</div>
+  <h1>Nouvel appareil détecté</h1>
+  <p class="subtitle">Ce compte se connecte depuis un appareil inconnu. Confirme ton identité avec ton empreinte digitale ou ta reconnaissance faciale pour continuer.</p>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}{% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+
+  <div id="status" class="flash" style="display:none;"></div>
+  <button id="verifyBtn">Vérifier avec empreinte / visage / PIN</button>
+
+  <p class="link" style="margin-top:20px;">Pas d'empreinte, de visage, ni de code de verrouillage sur cet appareil ?</p>
+  <form method="POST" action="{{ url_for('verify_device_backup_code') }}">
+    <input type="text" name="code" placeholder="Code de secours" required>
+    <button type="submit" class="btn secondary" style="width:100%;">Utiliser un code de secours</button>
+  </form>
+</div>
+
+<script>
+function b64urlToBuffer(value) {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4);
+  const raw = atob(padded);
+  const buf = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+  return buf.buffer;
+}
+function bufferToB64url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let str = '';
+  for (const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+function reviveBytes(obj) {
+  if (obj && typeof obj === 'object' && '$bytes' in obj) return b64urlToBuffer(obj['$bytes']);
+  if (Array.isArray(obj)) return obj.map(reviveBytes);
+  if (obj && typeof obj === 'object') {
+    const out = {};
+    for (const k in obj) out[k] = reviveBytes(obj[k]);
+    return out;
+  }
+  return obj;
+}
+
+document.getElementById('verifyBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('status');
+  statusEl.style.display = 'block';
+  try {
+    const beginResp = await fetch('/webauthn/authenticate/begin', { method: 'POST' });
+    const optionsJson = await beginResp.json();
+    const publicKey = reviveBytes(optionsJson);
+
+    statusEl.textContent = "Utilise ton empreinte / visage maintenant...";
+    const assertion = await navigator.credentials.get({ publicKey });
+
+    const payload = {
+      id: bufferToB64url(assertion.rawId),
+      response: {
+        clientDataJSON: bufferToB64url(assertion.response.clientDataJSON),
+        authenticatorData: bufferToB64url(assertion.response.authenticatorData),
+        signature: bufferToB64url(assertion.response.signature),
+      },
+    };
+
+    const completeResp = await fetch('/webauthn/authenticate/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await completeResp.json();
+
+    if (result.status === 'ok') {
+      statusEl.textContent = "✅ Identité confirmée !";
+      window.location.href = result.redirect;
+    } else {
+      statusEl.textContent = result.message || "Échec de la vérification.";
+    }
+  } catch (e) {
+    statusEl.textContent = "Erreur : " + e.message;
+  }
+});
+</script>
+{% endblock %}

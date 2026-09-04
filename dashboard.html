@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card wide">
+  <div class="brand"><span class="dot g"></span><span class="dot y"></span><span class="dot r"></span></div>
+  <h1>Bonjour, {{ current_user.username }} 👋</h1>
+  <p class="subtitle">Choisis un collègue pour démarrer une conversation sécurisée.</p>
+
+  <ul class="user-list">
+    {% for u in users %}
+    <li>
+      <a href="{{ url_for('chat', other_id=u['id']) }}">
+        <div class="avatar">{{ u['username'][0]|upper }}</div>
+        {{ u['username'] }}
+      </a>
+    </li>
+    {% else %}
+    <p class="subtitle">Aucun autre enseignant inscrit pour le moment.</p>
+    {% endfor %}
+  </ul>
+  <a class="link" href="{{ url_for('logout') }}">Se déconnecter</a>
+</div>
+{% endblock %}

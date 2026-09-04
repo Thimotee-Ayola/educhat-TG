@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Active la double authentification</h1>
+  <p class="subtitle">Scanne ce code avec Google Authenticator (ou une appli similaire), puis entre le code à 6 chiffres généré.</p>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}{% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+
+  <div class="qr-box">
+    <img src="data:image/png;base64,{{ qr_b64 }}" width="200" height="200">
+  </div>
+  <div class="secret-code">{{ secret }}</div>
+
+  <form method="POST">
+    <input type="text" name="code" placeholder="Code à 6 chiffres" required maxlength="6">
+    <button type="submit">Confirmer</button>
+  </form>
+</div>
+{% endblock %}
